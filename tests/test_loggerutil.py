@@ -32,13 +32,17 @@ class TestLoggerUtil(unittest.TestCase):
 
     def test_convert_to_timestring_rounding_float_seconds(self):
         time_s = 3659.9955  # Very close to 3660, and should round off to it
-        self.assertEqual(convert_to_timestring(time_s, add_milliseconds=True), "1:01:00.00")
+        self.assertEqual(
+            convert_to_timestring(time_s, add_milliseconds=True), "1:01:00.00"
+        )
 
-    @skipIf(os.environ.get('CI') == 'true', 'Skipped due to CI')
+    @skipIf(os.environ.get("CI") == "true", "Skipped due to CI")
     def test_formatTime_with_datefmt(self):
         formatter = loggerutil.TrackerFormatter()
         record = MagicMock()
-        record.created = 1678886400.0  # This is a sample timestamp for "2023-03-15 12:00:00"
+        record.created = (
+            1678886400.0  # This is a sample timestamp for "2023-03-15 12:00:00"
+        )
 
         # Specify a custom date format
         datefmt = "%Y-%m-%d %H-%M-%S"
@@ -46,11 +50,13 @@ class TestLoggerUtil(unittest.TestCase):
 
         self.assertEqual(formatted_time, "2023-03-15 14-20-00")
 
-    @skipIf(os.environ.get('CI') == 'true', 'Skipped due to CI')
+    @skipIf(os.environ.get("CI") == "true", "Skipped due to CI")
     def test_formatTime_without_datefmt(self):
         formatter = loggerutil.TrackerFormatter()
         record = MagicMock()
-        record.created = 1678886400.0  # This is a sample timestamp for "2023-03-15 12:00:00"
+        record.created = (
+            1678886400.0  # This is a sample timestamp for "2023-03-15 12:00:00"
+        )
 
         formatted_time = formatter.formatTime(record)
 
@@ -86,7 +92,9 @@ class TestLoggerUtil(unittest.TestCase):
     def test_logger_setup(self):
         logger = Logger()
         self.assertIsInstance(logger, Logger)
-        self.assertEqual(logger.logger_output.level, logging.DEBUG, "Logging level is not DEBUG.")
+        self.assertEqual(
+            logger.logger_output.level, logging.DEBUG, "Logging level is not DEBUG."
+        )
 
     def test_info_logging(self):
         logger = Logger()
@@ -127,7 +135,9 @@ class TestLoggerUtil(unittest.TestCase):
         logger = Logger()
         with unittest.mock.patch.object(logger.logger, "info") as mock_info:
             logger._log_initial_info()  # Call it again for testing purposes
-            self.assertEqual(mock_info.call_count, 2)  # Called twice: one during initialization and one during our test
+            self.assertEqual(
+                mock_info.call_count, 2
+            )  # Called twice: one during initialization and one during our test
 
     def test_logger_with_log_dir(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

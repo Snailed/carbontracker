@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from carbontracker.emissions.intensity.fetchers.electricitymaps import ElectricityMap
 from carbontracker import exceptions
 
+
 class TestElectricityMap(unittest.TestCase):
     def setUp(self):
         self.electricity_map = ElectricityMap()
@@ -26,7 +27,9 @@ class TestElectricityMap(unittest.TestCase):
         mock_response.json.return_value = {"carbonIntensity": 50.0}
         mock_get.return_value = mock_response
 
-        result = self.electricity_map._carbon_intensity_by_location(lon=self.g_location.lng, lat=self.g_location.lat)
+        result = self.electricity_map._carbon_intensity_by_location(
+            lon=self.g_location.lng, lat=self.g_location.lat
+        )
         self.assertEqual(result, 50.0)
 
     @patch("requests.get")
@@ -36,7 +39,9 @@ class TestElectricityMap(unittest.TestCase):
         mock_response.json.return_value = {"carbonIntensity": 75.0}
         mock_get.return_value = mock_response
 
-        result = self.electricity_map._carbon_intensity_by_location(zone=self.g_location.country)
+        result = self.electricity_map._carbon_intensity_by_location(
+            zone=self.g_location.country
+        )
         self.assertEqual(result, 75.0)
 
     @patch("requests.get")
@@ -47,7 +52,9 @@ class TestElectricityMap(unittest.TestCase):
         mock_get.return_value = mock_response
 
         with self.assertRaises(exceptions.CarbonIntensityFetcherError):
-            self.electricity_map._carbon_intensity_by_location(lon=self.g_location.lng, lat=self.g_location.lat)
+            self.electricity_map._carbon_intensity_by_location(
+                lon=self.g_location.lng, lat=self.g_location.lat
+            )
 
     @patch.object(ElectricityMap, "_carbon_intensity_by_location")
     def test_carbon_intensity(self, mock_carbon_intensity_by_location):
@@ -63,7 +70,9 @@ class TestElectricityMap(unittest.TestCase):
 
         result = self.electricity_map.carbon_intensity(self.g_location)
 
-        mock_carbon_intensity_by_location.assert_called_with(zone=self.g_location.country)
+        mock_carbon_intensity_by_location.assert_called_with(
+            zone=self.g_location.country
+        )
         self.assertEqual(result.carbon_intensity, 25.0)
 
 

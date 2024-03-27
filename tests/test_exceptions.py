@@ -1,6 +1,7 @@
 import unittest
 from carbontracker import exceptions
 
+
 class TestExceptions(unittest.TestCase):
     def test_no_components_available_error(self):
         with self.assertRaises(exceptions.NoComponentsAvailableError):

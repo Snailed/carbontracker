@@ -1,6 +1,7 @@
 import unittest
 from carbontracker.components.handler import Handler
 
+
 class TestHandler(unittest.TestCase):
     def setUp(self):
         # Create a Handler instance
@@ -27,5 +28,5 @@ class TestHandler(unittest.TestCase):
             self.handler.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -35,7 +35,8 @@ class IntelCPU(Handler):
         while attempts > 0:
             attempts -= 1
             power_usages = [
-                self._compute_power(before, after) for before, after in zip(before_measures, after_measures)
+                self._compute_power(before, after)
+                for before, after in zip(before_measures, after_measures)
             ]
             if all(power >= 0 for power in power_usages):
                 return power_usages
@@ -65,10 +66,16 @@ class IntelCPU(Handler):
 
             except FileNotFoundError:
                 # check cpu/gpu/dram
-                parts = [f for f in os.listdir(os.path.join(RAPL_DIR, package)) if re.match(self.parts_pattern, f)]
+                parts = [
+                    f
+                    for f in os.listdir(os.path.join(RAPL_DIR, package))
+                    if re.match(self.parts_pattern, f)
+                ]
                 total_power_usage = 0
                 for part in parts:
-                    total_power_usage += self._read_energy(os.path.join(RAPL_DIR, package, part))
+                    total_power_usage += self._read_energy(
+                        os.path.join(RAPL_DIR, package, part)
+                    )
 
                 measurements.append(total_power_usage)
 
@@ -93,7 +100,9 @@ class IntelCPU(Handler):
                     name = f.read().strip()
                 if name != "psys":
                     self._rapl_devices.append(package)
-                    self._devices.append(self._convert_rapl_name(package, devices_pattern))
+                    self._devices.append(
+                        self._convert_rapl_name(package, devices_pattern)
+                    )
 
     def shutdown(self):
         pass

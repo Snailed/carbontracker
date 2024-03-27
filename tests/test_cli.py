@@ -8,6 +8,7 @@ import sys
 from carbontracker import cli
 import os
 
+
 def mock_password_input(prompt):
     # Simulate password entry based on the prompt
     if "Password:" in prompt:
@@ -16,7 +17,8 @@ def mock_password_input(prompt):
         # Handle other prompts or return None for unexpected prompts
         return None
 
-@skipIf(os.environ.get('CI') == 'true', 'Skipped due to CI')
+
+@skipIf(os.environ.get("CI") == "true", "Skipped due to CI")
 class TestCLI(unittest.TestCase):
 
     @patch("builtins.input", side_effect=mock_password_input)
@@ -27,8 +29,9 @@ class TestCLI(unittest.TestCase):
         sys.stdout = captured_output
 
         cli.main()
-        self.assertIn("CarbonTracker: The following components", captured_output.getvalue())
-
+        self.assertIn(
+            "CarbonTracker: The following components", captured_output.getvalue()
+        )
 
     @patch("builtins.input", side_effect=mock_password_input)
     @patch("sys.argv", ["python -c 'print('Test')'"])
@@ -38,14 +41,18 @@ class TestCLI(unittest.TestCase):
         sys.stdout = captured_output
 
         cli.main()
-        self.assertIn("CarbonTracker: The following components", captured_output.getvalue())
+        self.assertIn(
+            "CarbonTracker: The following components", captured_output.getvalue()
+        )
 
     @patch("builtins.input", side_effect=mock_password_input)
     @patch("subprocess.run", autospec=True)
     @patch.object(sys, "argv", ["cli.py", "--log_dir", "./logs", "echo 'test'"])
     def test_main_with_remaining_args(self, mock_subprocess, mock_input):
         sleep(2)
-        mock_subprocess.return_value.returncode = 0  # Simulate a successful command execution
+        mock_subprocess.return_value.returncode = (
+            0  # Simulate a successful command execution
+        )
 
         cli.main()
         mock_subprocess.assert_called_once_with(["echo 'test'"], check=True)
@@ -59,6 +66,7 @@ class TestCLI(unittest.TestCase):
 
         cli.main()
         mock_subprocess.assert_called_once_with(["echo 'test'"], check=True)
+
 
 if __name__ == "__main__":
     unittest.main()

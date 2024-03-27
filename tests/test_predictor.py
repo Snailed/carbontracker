@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from carbontracker import predictor
 
+
 class TestPredictor(unittest.TestCase):
     def test_predict_energy(self):
         total_epochs = 10
@@ -16,4 +17,3 @@ class TestPredictor(unittest.TestCase):
         expected_result = total_epochs * np.mean(epoch_times)
         result = predictor.predict_time(total_epochs, epoch_times)
         self.assertEqual(result, expected_result)
-

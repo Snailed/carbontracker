@@ -3,7 +3,10 @@ import numpy as np
 from carbontracker import exceptions
 from carbontracker.components.gpu import nvidia
 from carbontracker.components.cpu import intel
-from carbontracker.components.apple_silicon.powermetrics import AppleSiliconCPU, AppleSiliconGPU
+from carbontracker.components.apple_silicon.powermetrics import (
+    AppleSiliconCPU,
+    AppleSiliconGPU,
+)
 
 COMPONENTS = [
     {
@@ -39,8 +42,12 @@ class Component:
     def __init__(self, name, pids, devices_by_pid):
         self.name = name
         if name not in component_names():
-            raise exceptions.ComponentNameError(f"No component found with name '{self.name}'.")
-        self._handler = self._determine_handler(pids=pids, devices_by_pid=devices_by_pid)
+            raise exceptions.ComponentNameError(
+                f"No component found with name '{self.name}'."
+            )
+        self._handler = self._determine_handler(
+            pids=pids, devices_by_pid=devices_by_pid
+        )
         self.power_usages = []
         self.cur_epoch = -1  # Sentry
 
@@ -77,7 +84,9 @@ class Component:
             if diff != 0:
                 for _ in range(diff):
                     # Copy previous measurement lists.
-                    latest_measurements = self.power_usages[-1] if self.power_usages else []
+                    latest_measurements = (
+                        self.power_usages[-1] if self.power_usages else []
+                    )
                     self.power_usages.append(latest_measurements)
             self.power_usages.append([])
         try:
@@ -141,8 +150,12 @@ class Component:
 def create_components(components, pids, devices_by_pid):
     components = components.strip().replace(" ", "").lower()
     if components == "all":
-        return [Component(name=comp_name, pids=pids, devices_by_pid=devices_by_pid) for comp_name in component_names()]
+        return [
+            Component(name=comp_name, pids=pids, devices_by_pid=devices_by_pid)
+            for comp_name in component_names()
+        ]
     else:
         return [
-            Component(name=comp_name, pids=pids, devices_by_pid=devices_by_pid) for comp_name in components.split(",")
+            Component(name=comp_name, pids=pids, devices_by_pid=devices_by_pid)
+            for comp_name in components.split(",")
         ]

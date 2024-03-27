@@ -26,7 +26,11 @@ class EnergiDataService(IntensityFetcher):
 
     def _emission_current(self):
         def url_creator(area):
-            return 'https://api.energidataservice.dk/dataset/CO2emis?filter={"PriceArea":"' + area + '"}'
+            return (
+                'https://api.energidataservice.dk/dataset/CO2emis?filter={"PriceArea":"'
+                + area
+                + '"}'
+            )
 
         areas = ["DK1", "DK2"]
         carbon_intensities = []
@@ -41,7 +45,13 @@ class EnergiDataService(IntensityFetcher):
 
     def _emission_prognosis(self, time_dur):
         from_str, to_str = self._interval(time_dur=time_dur)
-        url = "https://api.energidataservice.dk/dataset/CO2Emis?start={" + from_str + "&end={" + to_str + "}&limit=4"
+        url = (
+            "https://api.energidataservice.dk/dataset/CO2Emis?start={"
+            + from_str
+            + "&end={"
+            + to_str
+            + "}&limit=4"
+        )
         response = requests.get(url)
         if not response.ok:
             raise exceptions.CarbonIntensityFetcherError(response.json())

@@ -21,10 +21,7 @@ class TestEnergiDataService(unittest.TestCase):
         mock_response = mock.MagicMock()
         mock_response.ok = True
         mock_response.json.return_value = {
-            "records": [
-                {"CO2Emission": 1.0},
-                {"CO2Emission": 2.0}
-            ]
+            "records": [{"CO2Emission": 1.0}, {"CO2Emission": 2.0}]
         }
         mock_get.return_value = mock_response
         result = self.fetcher.carbon_intensity(self.geocoder)
@@ -41,7 +38,7 @@ class TestEnergiDataService(unittest.TestCase):
                 {"CO2Emission": 1.0},
                 {"CO2Emission": 2.0},
                 {"CO2Emission": 3.0},
-                {"CO2Emission": 4.0}
+                {"CO2Emission": 4.0},
             ]
         }
         mock_get.return_value = mock_response
@@ -60,7 +57,7 @@ class TestEnergiDataService(unittest.TestCase):
                 {"CO2Emission": 1.0},
                 {"CO2Emission": 2.0},
                 {"CO2Emission": 3.0},
-                {"CO2Emission": 4.0}
+                {"CO2Emission": 4.0},
             ]
         }
         mock_get.return_value = mock_response

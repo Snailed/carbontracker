@@ -7,6 +7,7 @@ recommended to run nvmlInit() and nvmlShutdown() as few times as possible, e.g.
 by running queries in batches (initializing and shutdown after each query can
 result in more than a 10x slowdown).
 """
+
 import sys
 
 import pynvml
@@ -29,7 +30,7 @@ class NvidiaGPU(Handler):
         names = [pynvml.nvmlDeviceGetName(handle) for handle in self._handles]
 
         # Decode names if Python version is less than 3.9
-        if sys.version_info < (3,10):
+        if sys.version_info < (3, 10):
             names = [name.decode() for name in names]
 
         return names
@@ -119,7 +120,7 @@ class NvidiaGPU(Handler):
             gpu_pids = [
                 p.pid
                 for p in pynvml.nvmlDeviceGetComputeRunningProcesses(handle)
-                         + pynvml.nvmlDeviceGetGraphicsRunningProcesses(handle)
+                + pynvml.nvmlDeviceGetGraphicsRunningProcesses(handle)
             ]
 
             if set(gpu_pids).intersection(self.pids):

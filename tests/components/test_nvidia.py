@@ -5,6 +5,7 @@ import pynvml
 from carbontracker import exceptions
 from carbontracker.components.gpu.nvidia import NvidiaGPU
 
+
 class PynvmlStub:
     @staticmethod
     def nvmlInit():
@@ -106,31 +107,50 @@ class TestNvidiaGPU(unittest.TestCase):
         gpu._handles = [0]
         self.assertEqual(gpu.devices(), ["GPU"])
 
-    @patch("carbontracker.components.gpu.nvidia.pynvml.nvmlDeviceGetPowerUsage",
-           side_effect=pynvml.NVMLError(pynvml.NVML_ERROR_UNKNOWN))
-    def test_power_usage_error_retrieving_power_usage(self, mock_nvmlDeviceGetPowerUsage):
+    @patch(
+        "carbontracker.components.gpu.nvidia.pynvml.nvmlDeviceGetPowerUsage",
+        side_effect=pynvml.NVMLError(pynvml.NVML_ERROR_UNKNOWN),
+    )
+    def test_power_usage_error_retrieving_power_usage(
+        self, mock_nvmlDeviceGetPowerUsage
+    ):
         gpu = NvidiaGPU(pids=[], devices_by_pid={})
         gpu._handles = [0]
         with self.assertRaises(exceptions.GPUPowerUsageRetrievalError):
             gpu.power_usage()
 
-    @patch("carbontracker.components.gpu.nvidia.pynvml.nvmlDeviceGetComputeRunningProcesses", return_value=[])
-    @patch("carbontracker.components.gpu.nvidia.pynvml.nvmlDeviceGetGraphicsRunningProcesses", return_value=[])
-    def test_get_handles_by_pid_no_gpus_running_processes(self, mock_nvmlDeviceGetComputeRunningProcesses, mock_nvmlDeviceGetGraphicsRunningProcesses):
+    @patch(
+        "carbontracker.components.gpu.nvidia.pynvml.nvmlDeviceGetComputeRunningProcesses",
+        return_value=[],
+    )
+    @patch(
+        "carbontracker.components.gpu.nvidia.pynvml.nvmlDeviceGetGraphicsRunningProcesses",
+        return_value=[],
+    )
+    def test_get_handles_by_pid_no_gpus_running_processes(
+        self,
+        mock_nvmlDeviceGetComputeRunningProcesses,
+        mock_nvmlDeviceGetGraphicsRunningProcesses,
+    ):
         gpu = NvidiaGPU(pids=[1234], devices_by_pid={1234: [0]})
         self.assertEqual(gpu._handles, None)
 
     @patch("carbontracker.components.gpu.nvidia.pynvml.nvmlInit")
-    @patch("carbontracker.components.gpu.nvidia.pynvml.nvmlDeviceGetCount", return_value=0)
+    @patch(
+        "carbontracker.components.gpu.nvidia.pynvml.nvmlDeviceGetCount", return_value=0
+    )
     def test_available_no_gpus(self, mock_nvmlDeviceGetCount, mock_nvmlInit):
         gpu = NvidiaGPU(pids=[], devices_by_pid={})
         self.assertFalse(gpu.available())
 
-    @patch("carbontracker.components.gpu.nvidia.pynvml.nvmlInit", side_effect=pynvml.NVMLError(pynvml.NVML_ERROR_UNKNOWN))
+    @patch(
+        "carbontracker.components.gpu.nvidia.pynvml.nvmlInit",
+        side_effect=pynvml.NVMLError(pynvml.NVML_ERROR_UNKNOWN),
+    )
     def test_available_nvml_error(self, mock_nvmlInit):
         gpu = NvidiaGPU(pids=[], devices_by_pid={})
         self.assertFalse(gpu.available())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

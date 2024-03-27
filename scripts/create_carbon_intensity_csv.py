@@ -2,6 +2,7 @@
 
 Uses csv from https://ourworldindata.org/grapher/carbon-intensity-electricity.
 """
+
 import argparse
 
 import pycountry
