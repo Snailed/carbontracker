@@ -21,10 +21,7 @@ class TestEnergiDataService(unittest.TestCase):
         mock_response = mock.MagicMock()
         mock_response.ok = True
         mock_response.json.return_value = {
-            "records": [
-                {"CO2Emission": 1.0},
-                {"CO2Emission": 2.0}
-            ]
+            "records": [{"CO2Emission": 1.0}, {"CO2Emission": 2.0}]
         }
         mock_get.return_value = mock_response
         result = self.fetcher.carbon_intensity(self.geocoder)
@@ -33,7 +30,7 @@ class TestEnergiDataService(unittest.TestCase):
         self.assertFalse(result.is_prediction)
 
     @mock.patch("requests.get")
-    def test_carbon_intensity_with_time_dur(self, mock_get):
+    def test_carbon_intensity_with_time_to(self, mock_get):
         mock_response = mock.MagicMock()
         mock_response.ok = True
         mock_response.json.return_value = {
@@ -41,15 +38,67 @@ class TestEnergiDataService(unittest.TestCase):
                 {"CO2Emission": 1.0},
                 {"CO2Emission": 2.0},
                 {"CO2Emission": 3.0},
-                {"CO2Emission": 4.0}
+                {"CO2Emission": 4.0},
             ]
         }
         mock_get.return_value = mock_response
 
-        result = self.fetcher.carbon_intensity(self.geocoder, time_dur=1800)
+        result = self.fetcher.carbon_intensity(
+            self.geocoder,
+            time_to=datetime.datetime.now(datetime.timezone.utc)
+            + datetime.timedelta(seconds=150),
+        )
 
         self.assertEqual(result.carbon_intensity, 2.5)
         self.assertTrue(result.is_prediction)
+
+    @mock.patch("requests.get")
+    def test_carbon_intensity_with_time_from(self, mock_get):
+        mock_response = mock.MagicMock()
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            "records": [
+                {"CO2Emission": 1.0},
+                {"CO2Emission": 2.0},
+                {"CO2Emission": 3.0},
+                {"CO2Emission": 4.0},
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        result = self.fetcher.carbon_intensity(
+            self.geocoder,
+            time_from=datetime.datetime.now(datetime.timezone.utc)
+            - datetime.timedelta(seconds=150),
+        )
+
+        self.assertEqual(result.carbon_intensity, 2.5)
+        self.assertFalse(result.is_prediction)
+
+    @mock.patch("requests.get")
+    def test_carbon_intensity_with_time_from_and_time_to(self, mock_get):
+        mock_response = mock.MagicMock()
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            "records": [
+                {"CO2Emission": 1.0},
+                {"CO2Emission": 2.0},
+                {"CO2Emission": 3.0},
+                {"CO2Emission": 4.0},
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        result = self.fetcher.carbon_intensity(
+            self.geocoder,
+            time_from=datetime.datetime.now(datetime.timezone.utc)
+            - datetime.timedelta(seconds=150),
+            time_to=datetime.datetime.now(datetime.timezone.utc)
+            + datetime.timedelta(seconds=150),
+        )
+
+        self.assertEqual(result.carbon_intensity, 2.5)
+        self.assertFalse(result.is_prediction)
 
     @mock.patch("requests.get")
     def test_nearest_5_min(self, mock_get):
@@ -60,14 +109,18 @@ class TestEnergiDataService(unittest.TestCase):
                 {"CO2Emission": 1.0},
                 {"CO2Emission": 2.0},
                 {"CO2Emission": 3.0},
-                {"CO2Emission": 4.0}
+                {"CO2Emission": 4.0},
             ]
         }
         mock_get.return_value = mock_response
 
-        _result = self.fetcher.carbon_intensity(self.geocoder, time_dur=1800)
+        _result = self.fetcher.carbon_intensity(
+            self.geocoder,
+            time_to=datetime.datetime.now(datetime.timezone.utc)
+            + datetime.timedelta(seconds=1800),
+        )
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
 
         from_time = now - datetime.timedelta(
             minutes=now.minute % 5, seconds=now.second, microseconds=now.microsecond
@@ -75,12 +128,12 @@ class TestEnergiDataService(unittest.TestCase):
         to_time = from_time + datetime.timedelta(seconds=1800)
 
         # Format the from_time and to_time to strings
-        date_format = "%Y-%m-%d %H:%M"
+        date_format = "%Y-%m-%dT%H:%M"
         expected_from_time = from_time.strftime(date_format)
         expected_to_time = to_time.strftime(date_format)
 
         # Check that the mocked requests.get was called with the expected URL
-        expected_url = f"https://api.energidataservice.dk/dataset/CO2Emis?start={{{expected_from_time}&end={{{expected_to_time}}}&limit=4"
+        expected_url = f"https://api.energidataservice.dk/dataset/CO2Emis?start={expected_from_time}&end={expected_to_time}&limit=4"
         mock_get.assert_called_once_with(expected_url)
 
     @mock.patch("requests.get")
@@ -101,4 +154,8 @@ class TestEnergiDataService(unittest.TestCase):
         mock_get.return_value = mock_response
 
         with self.assertRaises(exceptions.CarbonIntensityFetcherError):
-            self.fetcher._emission_prognosis(time_dur=1800)
+            self.fetcher._emission_prognosis(
+                time_from=None,
+                time_to=datetime.datetime.now(datetime.timezone.utc)
+                + datetime.timedelta(seconds=1800),
+            )

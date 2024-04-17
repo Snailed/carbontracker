@@ -19,7 +19,10 @@ class EnergiDataService(IntensityFetcher):
             ci = self._emission_current()
         else:
             ci = self._emission_prognosis(time_from, time_to)
-            carbon_intensity.is_prediction = True
+            if time_to is not None and time_to > datetime.datetime.now(
+                datetime.timezone.utc
+            ):
+                carbon_intensity.is_prediction = True
 
         carbon_intensity.carbon_intensity = ci
 
@@ -40,22 +43,37 @@ class EnergiDataService(IntensityFetcher):
             url = url_creator(area)
             response = requests.get(url)
             if not response.ok:
-                raise exceptions.CarbonIntensityFetcherError(response.json())
+                try:
+                    json = response.json()
+                    raise exceptions.CarbonIntensityFetcherError(json)
+                except:
+                    raise exceptions.CarbonIntensityFetcherError(response.raw)
             carbon_intensities.append(response.json()["records"][0]["CO2Emission"])
         return np.mean(carbon_intensities)
 
-    def _emission_prognosis(self, time_from, time_to):
+    def _emission_prognosis(
+        self,
+        time_from: Optional[datetime.datetime] = None,
+        time_to: Optional[datetime.datetime] = None,
+    ):
         from_str, to_str = self._interval(time_from=time_from, time_to=time_to)
         url = (
-            "https://api.energidataservice.dk/dataset/CO2Emis?start={"
+            "https://api.energidataservice.dk/dataset/CO2Emis?start="
             + from_str
-            + "&end={"
+            + "&end="
             + to_str
-            + "}&limit=4"
+            + "&limit=4"
         )
         response = requests.get(url)
         if not response.ok:
-            raise exceptions.CarbonIntensityFetcherError(response.json())
+            try:
+                json = response.json()
+                raise exceptions.CarbonIntensityFetcherError(json)
+            except:
+                raise exceptions.CarbonIntensityFetcherError(
+                    f"Failed with status code {response.status_code} when connecting to url {url}"
+                )
+
         data = response.json()["records"]
         carbon_intensities = [record["CO2Emission"] for record in data]
         return np.mean(carbon_intensities)
@@ -65,14 +83,22 @@ class EnergiDataService(IntensityFetcher):
         time_to: Optional[datetime.datetime],
         time_from: Optional[datetime.datetime],
     ):
-        from_time = time_from if time_from is not None else datetime.datetime.utcnow()
-        to_time = time_to if time_to is not None else datetime.datetime.utcnow()
+        from_time = (
+            time_from
+            if time_from is not None
+            else datetime.datetime.now(datetime.timezone.utc)
+        )
+        to_time = (
+            time_to
+            if time_to is not None
+            else datetime.datetime.now(datetime.timezone.utc)
+        )
         from_str = self._nearest_5_min(from_time)
         to_str = self._nearest_5_min(to_time)
         return from_str, to_str
 
     def _nearest_5_min(self, time):
-        date_format = "%Y-%m-%d %H:%M"
+        date_format = "%Y-%m-%dT%H:%M"
         nearest_5_min = time - datetime.timedelta(
             minutes=time.minute % 5, seconds=time.second, microseconds=time.microsecond
         )

@@ -1,5 +1,6 @@
 import os.path
 import traceback
+import datetime
 
 import geocoder
 import numpy as np
@@ -12,6 +13,8 @@ from carbontracker import constants
 from carbontracker.emissions.intensity.fetchers import carbonintensitygb
 from carbontracker.emissions.intensity.fetchers import energidataservice
 from carbontracker.emissions.intensity.fetchers import electricitymaps
+
+from typing import Optional
 
 
 def get_default_intensity():
@@ -28,14 +31,22 @@ def get_default_intensity():
 
     try:
         # importlib.resources.files was introduced in Python 3.9
-        if sys.version_info < (3,9):
+        if sys.version_info < (3, 9):
             import pkg_resources
-            path = pkg_resources.resource_filename("carbontracker", "data/carbon-intensities.csv")
+
+            path = pkg_resources.resource_filename(
+                "carbontracker", "data/carbon-intensities.csv"
+            )
         else:
             import importlib.resources
-            path = importlib.resources.files("carbontracker").joinpath("data", "carbon-intensities.csv")
+
+            path = importlib.resources.files("carbontracker").joinpath(
+                "data", "carbon-intensities.csv"
+            )
         carbon_intensities_df = pd.read_csv(str(path))
-        intensity_row = carbon_intensities_df[carbon_intensities_df["alpha-2"] == country].iloc[0]
+        intensity_row = carbon_intensities_df[
+            carbon_intensities_df["alpha-2"] == country
+        ].iloc[0]
         intensity = intensity_row["Carbon intensity of electricity (gCO2/kWh)"]
         year = intensity_row["Year"]
         description = f"Defaulted to average carbon intensity for {country} in {year} of {intensity:.2f} gCO2/kWh."
@@ -55,6 +66,7 @@ def get_default_intensity():
 
 
 default_intensity = get_default_intensity()
+
 
 class CarbonIntensity:
     def __init__(
@@ -87,7 +99,7 @@ class CarbonIntensity:
         self.message = default_intensity["description"]
 
 
-def carbon_intensity(logger, time_dur=None, time_from=None):
+def carbon_intensity(logger, time_from=None, time_to=None):
     fetchers = [
         electricitymaps.ElectricityMap(),
         energidataservice.EnergiDataService(),
@@ -110,10 +122,10 @@ def carbon_intensity(logger, time_dur=None, time_from=None):
         if not fetcher.suitable(g_location):
             continue
         try:
-            carbon_intensity = fetcher.carbon_intensity(g_location, time_dur, time_from)
+            carbon_intensity = fetcher.carbon_intensity(g_location, time_from, time_to)
             if not np.isnan(carbon_intensity.carbon_intensity):
                 carbon_intensity.success = True
-                set_carbon_intensity_message(carbon_intensity, time_dur)
+                set_carbon_intensity_message(carbon_intensity, time_from, time_to)
             carbon_intensity.address = g_location.address
         except:
             err_str = traceback.format_exc()
@@ -128,18 +140,28 @@ def carbon_intensity(logger, time_dur=None, time_from=None):
     return carbon_intensity
 
 
-def set_carbon_intensity_message(ci, time_dur):
-    if ci.is_prediction:
+def set_carbon_intensity_message(
+    ci, time_from: Optional[datetime.datetime], time_to: Optional[datetime.datetime]
+):
+    if ci.is_prediction and time_to is not None:
+        next_seconds = (
+            time_to
+            - (
+                time_from
+                if time_from is not None
+                else datetime.datetime.now(datetime.timezone.utc)
+            )
+        ).seconds
         if ci.success:
             ci.message = (
                 "Carbon intensity for the next "
-                f"{loggerutil.convert_to_timestring(time_dur)} is "
+                f"{loggerutil.convert_to_timestring(next_seconds)} is "
                 f"predicted to be {ci.carbon_intensity:.2f} gCO2/kWh"
             )
         else:
             ci.message = (
                 "Failed to predict carbon intensity for the next "
-                f"{loggerutil.convert_to_timestring(time_dur)}, "
+                f"{loggerutil.convert_to_timestring(next_seconds)}, "
                 f"fallback on average measured intensity"
             )
     else:

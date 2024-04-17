@@ -4,6 +4,7 @@ import time
 import traceback
 import psutil
 import math
+from datetime import datetime, timedelta, timezone
 from threading import Thread, Event
 
 import numpy as np
@@ -43,12 +44,23 @@ class CarbonIntensityThread(Thread):
 
     def _fetch_carbon_intensity(self):
         ci = intensity.carbon_intensity(self.logger)
-        if ci.success and isinstance(ci.carbon_intensity, (int, float)) and not np.isnan(ci.carbon_intensity):
+        if (
+            ci.success
+            and isinstance(ci.carbon_intensity, (int, float))
+            and not np.isnan(ci.carbon_intensity)
+        ):
             self.carbon_intensities.append(ci)
 
     def predict_carbon_intensity(self, pred_time_dur):
-        ci = intensity.carbon_intensity(self.logger, time_dur=pred_time_dur)
-        weighted_intensities = [ci.carbon_intensity for ci in self.carbon_intensities] + [ci.carbon_intensity]
+        time_to = datetime.now(timezone.utc) + timedelta(seconds=pred_time_dur)
+        ci = intensity.carbon_intensity(
+            self.logger,
+            time_from=None,
+            time_to=time_to,
+        )
+        weighted_intensities = [
+            ci.carbon_intensity for ci in self.carbon_intensities
+        ] + [ci.carbon_intensity]
 
         # Account for measured intensities by taking weighted average.
         weight = math.floor(pred_time_dur / self.update_interval)
@@ -57,7 +69,7 @@ class CarbonIntensityThread(Thread):
             weighted_intensities.append(ci.carbon_intensity)
 
         ci.carbon_intensity = np.mean(weighted_intensities)
-        intensity.set_carbon_intensity_message(ci, pred_time_dur)
+        intensity.set_carbon_intensity_message(ci, None, time_to)
 
         self.logger.info(ci.message)
         self.logger.output(ci.message, verbose_level=2)
@@ -79,7 +91,9 @@ class CarbonIntensityThread(Thread):
             f"Average carbon intensity during training was {avg_intensity:.2f}"
             f" gCO2/kWh at detected location: {location}."
         )
-        avg_ci = intensity.CarbonIntensity(carbon_intensity=avg_intensity, message=msg, success=True)
+        avg_ci = intensity.CarbonIntensity(
+            carbon_intensity=avg_intensity, message=msg, success=True
+        )
 
         self.logger.info(
             "Carbon intensities (gCO2/kWh) fetched every "
@@ -142,7 +156,6 @@ class CarbonTrackerThread(Thread):
         self.logger.info("Monitoring thread ended.")
         self.logger.output("Finished monitoring.", verbose_level=1)
 
-
     def epoch_start(self):
         self.epoch_counter += 1
         self.cur_epoch_time = time.time()
@@ -166,7 +179,9 @@ class CarbonTrackerThread(Thread):
     def _log_epoch_measurements(self):
         self.logger.info(f"Epoch {self.epoch_counter}:")
         duration = self.epoch_times[-1]
-        self.logger.info(f"Duration: {loggerutil.convert_to_timestring(duration, True)}")
+        self.logger.info(
+            f"Duration: {loggerutil.convert_to_timestring(duration, True)}"
+        )
         for comp in self.components:
             if comp.power_usages and comp.power_usages[-1]:
                 power_avg = np.mean(comp.power_usages[-1], axis=0)
@@ -175,9 +190,15 @@ class CarbonTrackerThread(Thread):
                 #  previous measurement.
                 # TODO: Use semaphores to wait for measurement to finish.
                 if np.isnan(power_avg).all():
-                    power_avg = np.mean(comp.power_usages[-2], axis=0) if len(comp.power_usages) >= 2 else None
+                    power_avg = (
+                        np.mean(comp.power_usages[-2], axis=0)
+                        if len(comp.power_usages) >= 2
+                        else None
+                    )
             else:
-                self.logger.err_warn("Epoch duration is too short for a measurement to be " "collected.")
+                self.logger.err_warn(
+                    "Epoch duration is too short for a measurement to be " "collected."
+                )
                 power_avg = None
 
             self.logger.info(f"Average power usage (W) for {comp.name}: {power_avg}")
@@ -212,7 +233,9 @@ class CarbonTrackerThread(Thread):
     def _handle_error(self, error):
         err_str = traceback.format_exc()
         if self.ignore_errors:
-            err_str = f"Ignored error: {err_str}Continued training without " "monitoring..."
+            err_str = (
+                f"Ignored error: {err_str}Continued training without " "monitoring..."
+            )
 
         self.logger.err_critical(err_str)
         self.logger.output(err_str)
@@ -246,7 +269,9 @@ class CarbonTracker:
             self.set_api_keys(api_keys)
 
         self.epochs = epochs
-        self.epochs_before_pred = epochs if epochs_before_pred < 0 else epochs_before_pred
+        self.epochs_before_pred = (
+            epochs if epochs_before_pred < 0 else epochs_before_pred
+        )
         self.monitor_epochs = epochs if monitor_epochs < 0 else monitor_epochs
         if self.monitor_epochs == 0 or self.monitor_epochs < self.epochs_before_pred:
             raise ValueError(
@@ -262,16 +287,22 @@ class CarbonTracker:
 
         try:
             pids = self._get_pids()
-            self.logger = loggerutil.Logger(log_dir=log_dir, verbose=verbose, log_prefix=log_file_prefix)
+            self.logger = loggerutil.Logger(
+                log_dir=log_dir, verbose=verbose, log_prefix=log_file_prefix
+            )
             self.tracker = CarbonTrackerThread(
                 delete=self._delete,
-                components=component.create_components(components=components, pids=pids, devices_by_pid=devices_by_pid),
+                components=component.create_components(
+                    components=components, pids=pids, devices_by_pid=devices_by_pid
+                ),
                 logger=self.logger,
                 ignore_errors=ignore_errors,
                 update_interval=update_interval,
             )
             self.intensity_stopper = Event()
-            self.intensity_updater = CarbonIntensityThread(self.logger, self.intensity_stopper)
+            self.intensity_updater = CarbonIntensityThread(
+                self.logger, self.intensity_stopper
+            )
         except Exception as e:
             self._handle_error(e)
 
@@ -310,7 +341,10 @@ class CarbonTracker:
         stopping, where not all monitor_epochs have been run."""
         if self.deleted:
             return
-        self.logger.info(f"Training was interrupted before all {self.monitor_epochs} epochs" " were monitored.")
+        self.logger.info(
+            f"Training was interrupted before all {self.monitor_epochs} epochs"
+            " were monitored."
+        )
         # Decrement epoch_counter with 1 since measurements for ultimate epoch
         # was interrupted and is not accounted for.
         self.epoch_counter -= 1
@@ -324,14 +358,18 @@ class CarbonTracker:
                 if name.lower() == "electricitymaps":
                     electricitymaps.ElectricityMap.set_api_key(key)
                 else:
-                    raise exceptions.FetcherNameError(f"Invalid API name '{name}' given.")
+                    raise exceptions.FetcherNameError(
+                        f"Invalid API name '{name}' given."
+                    )
         except Exception as e:
             self._handle_error(e)
 
     def _handle_error(self, error):
         err_str = traceback.format_exc()
         if self.ignore_errors:
-            err_str = f"Ignored error: {err_str}Continued training without " "monitoring..."
+            err_str = (
+                f"Ignored error: {err_str}Continued training without " "monitoring..."
+            )
 
         self.logger.err_critical(err_str)
         self.logger.output(err_str)
@@ -368,9 +406,17 @@ class CarbonTracker:
         _co2eq = self._co2eq(energy)
         conversions = co2eq.convert(_co2eq) if self.interpretable else None
         if self.epochs_before_pred == 0:
-            self._output_energy("Actual consumption:", time, energy, _co2eq, conversions)
+            self._output_energy(
+                "Actual consumption:", time, energy, _co2eq, conversions
+            )
         else:
-            self._output_energy(f"Actual consumption for {self.epoch_counter} epoch(s):", time, energy, _co2eq, conversions)
+            self._output_energy(
+                f"Actual consumption for {self.epoch_counter} epoch(s):",
+                time,
+                energy,
+                _co2eq,
+                conversions,
+            )
 
     def _output_pred(self):
         """Output predicted usage for full training epochs."""
@@ -382,7 +428,11 @@ class CarbonTracker:
         conversions = co2eq.convert(pred_co2eq) if self.interpretable else None
 
         self._output_energy(
-            f"Predicted consumption for {self.epochs} epoch(s):", pred_time, pred_energy, pred_co2eq, conversions
+            f"Predicted consumption for {self.epochs} epoch(s):",
+            pred_time,
+            pred_energy,
+            pred_co2eq,
+            conversions,
         )
 
     def _co2eq(self, energy_usage, pred_time_dur=None):

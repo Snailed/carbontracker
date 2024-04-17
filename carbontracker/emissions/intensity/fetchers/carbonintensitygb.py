@@ -6,7 +6,7 @@ import numpy as np
 from carbontracker import exceptions
 from carbontracker.emissions.intensity.fetcher import IntensityFetcher
 from carbontracker.emissions.intensity import intensity
-from typing import Optional
+from typing import Optional, Tuple
 
 API_URL = "https://api.carbonintensity.org.uk"
 
@@ -18,7 +18,9 @@ class CarbonIntensityGB(IntensityFetcher):
     def carbon_intensity(self, g_location, time_from=None, time_to=None):
         carbon_intensity = intensity.CarbonIntensity(g_location=g_location)
 
-        if time_to is not None and time_to > datetime.datetime.utcnow():
+        if time_to is not None and time_to > datetime.datetime.now(
+            datetime.timezone.utc
+        ):
             carbon_intensity.is_prediction = True
 
         try:
@@ -66,7 +68,11 @@ class CarbonIntensityGB(IntensityFetcher):
 
         return carbon_intensity
 
-    def _carbon_intensity_gb_national(self, time_from=None, time_to=None):
+    def _carbon_intensity_gb_national(
+        self,
+        time_from: Optional[datetime.datetime] = None,
+        time_to: Optional[datetime.datetime] = None,
+    ):
         """Retrieves forecasted national carbon intensity (gCO2eq/kWh) in GB."""
         url = f"{API_URL}/intensity"
 
@@ -77,19 +83,29 @@ class CarbonIntensityGB(IntensityFetcher):
         response = requests.get(url)
         if not response.ok:
             raise exceptions.CarbonIntensityFetcherError(response.json())
-        carbon_intensity = response.json()["data"][0]["intensity"]["forecast"]
-        return carbon_intensity
+        carbon_intensity = [
+            record["intensity"]["forecast"] for record in response.json()["data"]
+        ]
+        return np.mean(carbon_intensity)
 
     def _time_from_to_str(
         self,
         time_from: Optional[datetime.datetime],
         time_to: Optional[datetime.datetime],
-    ) -> tuple[str, str]:
+    ) -> Tuple[str, str]:
         """Returns the current date in UTC (from) and time_dur seconds ahead
         (to) in ISO8601 format YYYY-MM-DDThh:mmZ."""
         date_format = "%Y-%m-%dT%H:%MZ"
-        time_from = time_from if time_from is not None else datetime.datetime.utcnow()
-        time_to = time_to if time_to is not None else datetime.datetime.utcnow()
+        time_from = (
+            time_from
+            if time_from is not None
+            else datetime.datetime.now(datetime.timezone.utc)
+        )
+        time_to = (
+            time_to
+            if time_to is not None
+            else datetime.datetime.now(datetime.timezone.utc)
+        )
         from_str = time_from.strftime(date_format)
         to_str = time_to.strftime(date_format)
         return from_str, to_str
