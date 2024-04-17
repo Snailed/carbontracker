@@ -17,11 +17,13 @@ class ElectricityMap(IntensityFetcher):
     def suitable(self, g_location):
         return self._api_key is not None
 
-    def carbon_intensity(self, g_location, time_dur=None):
+    def carbon_intensity(self, g_location, time_from=None, time_to=None):
         carbon_intensity = intensity.CarbonIntensity(g_location=g_location)
 
         try:
-            ci = self._carbon_intensity_by_location(lon=g_location.lng, lat=g_location.lat)
+            ci = self._carbon_intensity_by_location(
+                lon=g_location.lng, lat=g_location.lat
+            )
         except:
             ci = self._carbon_intensity_by_location(zone=g_location.country)
 

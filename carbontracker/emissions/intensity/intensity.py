@@ -13,6 +13,7 @@ from carbontracker.emissions.intensity.fetchers import carbonintensitygb
 from carbontracker.emissions.intensity.fetchers import energidataservice
 from carbontracker.emissions.intensity.fetchers import electricitymaps
 
+
 def get_default_intensity():
     """Retrieve static default carbon intensity value based on location."""
     try:
@@ -27,8 +28,15 @@ def get_default_intensity():
 
     try:
         carbon_intensities_df = pd.read_csv(
-            str(importlib.resources.files("carbontracker").joinpath("data", "carbon-intensities.csv")))
-        intensity_row = carbon_intensities_df[carbon_intensities_df["alpha-2"] == country].iloc[0]
+            str(
+                importlib.resources.files("carbontracker").joinpath(
+                    "data", "carbon-intensities.csv"
+                )
+            )
+        )
+        intensity_row = carbon_intensities_df[
+            carbon_intensities_df["alpha-2"] == country
+        ].iloc[0]
         intensity = intensity_row["Carbon intensity of electricity (gCO2/kWh)"]
         year = intensity_row["Year"]
         description = f"Defaulted to average carbon intensity for {country} in {year} of {intensity:.2f} gCO2/kWh."
@@ -36,7 +44,10 @@ def get_default_intensity():
         intensity = constants.WORLD_2019_CARBON_INTENSITY
         description = f"Defaulted to average carbon intensity for world in 2019 of {intensity:.2f} gCO2/kWh."
 
-    description = f"Live carbon intensity could not be fetched at detected location: {address}. " + description
+    description = (
+        f"Live carbon intensity could not be fetched at detected location: {address}. "
+        + description
+    )
     default_intensity = {
         "carbon_intensity": intensity,
         "description": description,
@@ -78,7 +89,7 @@ class CarbonIntensity:
         self.message = default_intensity["description"]
 
 
-def carbon_intensity(logger, time_dur=None):
+def carbon_intensity(logger, time_dur=None, time_from=None):
     fetchers = [
         electricitymaps.ElectricityMap(),
         energidataservice.EnergiDataService(),
@@ -101,7 +112,7 @@ def carbon_intensity(logger, time_dur=None):
         if not fetcher.suitable(g_location):
             continue
         try:
-            carbon_intensity = fetcher.carbon_intensity(g_location, time_dur)
+            carbon_intensity = fetcher.carbon_intensity(g_location, time_dur, time_from)
             if not np.isnan(carbon_intensity.carbon_intensity):
                 carbon_intensity.success = True
                 set_carbon_intensity_message(carbon_intensity, time_dur)
@@ -135,7 +146,9 @@ def set_carbon_intensity_message(ci, time_dur):
             )
     else:
         if ci.success:
-            ci.message = f"Current carbon intensity is {ci.carbon_intensity:.2f} gCO2/kWh"
+            ci.message = (
+                f"Current carbon intensity is {ci.carbon_intensity:.2f} gCO2/kWh"
+            )
         else:
             ci.set_default_message()
     ci.message += f" at detected location: {ci.address}."

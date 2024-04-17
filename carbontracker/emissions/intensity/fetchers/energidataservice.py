@@ -2,6 +2,7 @@ import datetime
 
 import requests
 import numpy as np
+from typing import Optional
 
 from carbontracker import exceptions
 from carbontracker.emissions.intensity.fetcher import IntensityFetcher
@@ -12,12 +13,12 @@ class EnergiDataService(IntensityFetcher):
     def suitable(self, g_location):
         return g_location.country == "DK"
 
-    def carbon_intensity(self, g_location, time_dur=None):
+    def carbon_intensity(self, g_location, time_from=None, time_to=None):
         carbon_intensity = intensity.CarbonIntensity(g_location=g_location)
-        if time_dur is None:
+        if time_from is None and time_to is None:
             ci = self._emission_current()
         else:
-            ci = self._emission_prognosis(time_dur=time_dur)
+            ci = self._emission_prognosis(time_from, time_to)
             carbon_intensity.is_prediction = True
 
         carbon_intensity.carbon_intensity = ci
@@ -26,7 +27,11 @@ class EnergiDataService(IntensityFetcher):
 
     def _emission_current(self):
         def url_creator(area):
-            return 'https://api.energidataservice.dk/dataset/CO2emis?filter={"PriceArea":"' + area + '"}'
+            return (
+                'https://api.energidataservice.dk/dataset/CO2emis?filter={"PriceArea":"'
+                + area
+                + '"}'
+            )
 
         areas = ["DK1", "DK2"]
         carbon_intensities = []
@@ -39,9 +44,15 @@ class EnergiDataService(IntensityFetcher):
             carbon_intensities.append(response.json()["records"][0]["CO2Emission"])
         return np.mean(carbon_intensities)
 
-    def _emission_prognosis(self, time_dur):
-        from_str, to_str = self._interval(time_dur=time_dur)
-        url = "https://api.energidataservice.dk/dataset/CO2Emis?start={" + from_str + "&end={" + to_str + "}&limit=4"
+    def _emission_prognosis(self, time_from, time_to):
+        from_str, to_str = self._interval(time_from=time_from, time_to=time_to)
+        url = (
+            "https://api.energidataservice.dk/dataset/CO2Emis?start={"
+            + from_str
+            + "&end={"
+            + to_str
+            + "}&limit=4"
+        )
         response = requests.get(url)
         if not response.ok:
             raise exceptions.CarbonIntensityFetcherError(response.json())
@@ -49,9 +60,13 @@ class EnergiDataService(IntensityFetcher):
         carbon_intensities = [record["CO2Emission"] for record in data]
         return np.mean(carbon_intensities)
 
-    def _interval(self, time_dur):
-        from_time = datetime.datetime.utcnow()
-        to_time = from_time + datetime.timedelta(seconds=time_dur)
+    def _interval(
+        self,
+        time_to: Optional[datetime.datetime],
+        time_from: Optional[datetime.datetime],
+    ):
+        from_time = time_from if time_from is not None else datetime.datetime.utcnow()
+        to_time = time_to if time_to is not None else datetime.datetime.utcnow()
         from_str = self._nearest_5_min(from_time)
         to_str = self._nearest_5_min(to_time)
         return from_str, to_str

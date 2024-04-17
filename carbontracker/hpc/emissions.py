@@ -23,11 +23,13 @@ def job_emissions(start, end, consumed_energy_J, api_key=""):
             raise exceptions.FetcherNameError(f"Invalid API name '{name}' given.")
 
     intensity = carbon_intensity(logger)
+
     mean_carbon_intensity = np.mean(
         get_carbon_intensity(
             start, end, api_key
         ),  # i.e. for each row in start, end, get carbon intensities as list
         axis=1,
     )  # gCO2eq/kWh
+
     consumed_energy_kWh = consumed_energy_J * 2.77777778e-7
     return consumed_energy_kWh * mean_carbon_intensity
